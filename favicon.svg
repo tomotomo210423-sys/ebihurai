@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#2d1b35"/>
+      <stop offset="100%" stop-color="#0e0a18"/>
+    </radialGradient>
+    <radialGradient id="frog" cx="45%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#6aaa6a"/>
+      <stop offset="100%" stop-color="#3a7040"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- 雨粒 -->
+  <g fill="#5080c0" opacity="0.45">
+    <ellipse cx="90"  cy="130" rx="4" ry="13" transform="rotate(-12 90 130)"/>
+    <ellipse cx="155" cy="70"  rx="4" ry="13" transform="rotate(-12 155 70)"/>
+    <ellipse cx="355" cy="85"  rx="4" ry="13" transform="rotate(-12 355 85)"/>
+    <ellipse cx="425" cy="140" rx="4" ry="13" transform="rotate(-12 425 140)"/>
+    <ellipse cx="68"  cy="310" rx="4" ry="13" transform="rotate(-12 68 310)"/>
+    <ellipse cx="445" cy="290" rx="4" ry="13" transform="rotate(-12 445 290)"/>
+    <ellipse cx="200" cy="50"  rx="3" ry="10" transform="rotate(-12 200 50)"/>
+    <ellipse cx="305" cy="55"  rx="3" ry="10" transform="rotate(-12 305 55)"/>
+  </g>
+
+  <!-- カエル本体 -->
+  <ellipse cx="256" cy="295" rx="140" ry="118" fill="url(#frog)"/>
+
+  <!-- 頭 -->
+  <ellipse cx="256" cy="208" rx="108" ry="95" fill="url(#frog)"/>
+
+  <!-- 斑模様（ミルカらしさ） -->
+  <ellipse cx="200" cy="185" rx="22" ry="16" fill="#2d5830" opacity="0.7"/>
+  <ellipse cx="315" cy="180" rx="18" ry="13" fill="#2d5830" opacity="0.7"/>
+  <ellipse cx="255" cy="168" rx="14" ry="10" fill="#2d5830" opacity="0.7"/>
+  <ellipse cx="195" cy="255" rx="20" ry="14" fill="#2d5830" opacity="0.6"/>
+  <ellipse cx="318" cy="260" rx="18" ry="13" fill="#2d5830" opacity="0.6"/>
+
+  <!-- 目の白目 -->
+  <circle cx="210" cy="192" r="35" fill="#f5f0ff"/>
+  <circle cx="302" cy="192" r="35" fill="#f5f0ff"/>
+
+  <!-- 十字瞳孔（ミルカの特徴） -->
+  <g fill="#180a22">
+    <rect x="196" y="190" width="28" height="5"  rx="2.5"/>
+    <rect x="207" y="179" width="5"  height="28" rx="2.5"/>
+    <rect x="288" y="190" width="28" height="5"  rx="2.5"/>
+    <rect x="299" y="179" width="5"  height="28" rx="2.5"/>
+  </g>
+
+  <!-- 金〜茶色の虹彩 -->
+  <circle cx="210" cy="192" r="14" fill="#b8903a" opacity="0.5"/>
+  <circle cx="302" cy="192" r="14" fill="#b8903a" opacity="0.5"/>
+
+  <!-- 青い唇（ミルカの特徴） -->
+  <ellipse cx="256" cy="240" rx="30" ry="11" fill="#80c0e0" opacity="0.9"/>
+
+  <!-- タイトル文字 -->
+  <text x="256" y="430"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="44"
+    fill="#eddece"
+    opacity="0.92"
+    letter-spacing="4">
+    Rainy Milk
+  </text>
+
+  <!-- 下線 -->
+  <line x1="128" y1="440" x2="384" y2="440"
+    stroke="#c8a87a" stroke-width="1" opacity="0.4"/>
+</svg>

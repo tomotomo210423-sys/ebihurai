@@ -122,7 +122,7 @@ const engine = {
 
         try {
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          removeWhitePixels(imageData.data);
+          removeWhitePixels(imageData.data, canvas.width, canvas.height);
           ctx.putImageData(imageData, 0, 0);
           const dataUrl = canvas.toDataURL('image/png');
           this.spriteCache[src] = dataUrl;
@@ -272,18 +272,44 @@ const engine = {
   },
 };
 
-// ── Pixel processing (standalone for clarity) ──────────────
+// ── Pixel processing: flood-fill from edges ────────────────
+// エッジから内側に向かってflood-fillで背景白を除去。
+// キャラクター内部の白/銀髪は保護される。
 
-function removeWhitePixels(data) {
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    if (r >= 245 && g >= 245 && b >= 245) {
-      // Fully transparent for near-white
-      data[i + 3] = 0;
-    } else if (r >= 225 && g >= 225 && b >= 225) {
-      // Soft edge: partial transparency proportional to brightness
-      const brightness = Math.max(r, g, b);
-      data[i + 3] = Math.round((255 - brightness) * 4.5);
+function removeWhitePixels(data, width, height) {
+  const visited = new Uint8Array(width * height);
+  const stack = [];
+
+  // エッジ全ピクセルをスタックに積む
+  for (let x = 0; x < width; x++) {
+    stack.push(x, 0);
+    stack.push(x, height - 1);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    stack.push(0, y);
+    stack.push(width - 1, y);
+  }
+
+  while (stack.length > 0) {
+    const y = stack.pop();
+    const x = stack.pop();
+    const idx = y * width + x;
+    if (visited[idx]) continue;
+    visited[idx] = 1;
+
+    const p = idx * 4;
+    const r = data[p], g = data[p + 1], b = data[p + 2];
+
+    // 白に近いピクセルだけを背景とみなして透明化
+    if (r >= 228 && g >= 228 && b >= 228) {
+      const brightness = (r + g + b) / 3;
+      // 明るいほど透明。ソフトエッジ
+      data[p + 3] = Math.round(Math.max(0, (255 - brightness) * 3.5));
+
+      if (x > 0)         stack.push(x - 1, y);
+      if (x < width - 1) stack.push(x + 1, y);
+      if (y > 0)         stack.push(x, y - 1);
+      if (y < height - 1) stack.push(x, y + 1);
     }
   }
 }
