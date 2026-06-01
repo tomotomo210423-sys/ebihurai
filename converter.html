@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>画像 → Base64 変換ツール</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 2rem;
+      max-width: 500px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    .upload-area {
+      border: 2px dashed #667eea;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      background: #f8f9ff;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area:hover {
+      border-color: #764ba2;
+      background: #f0f2ff;
+    }
+    .upload-area.dragover {
+      border-color: #764ba2;
+      background: #f0f2ff;
+    }
+    #fileInput {
+      display: none;
+    }
+    .upload-text {
+      color: #666;
+      font-size: 0.95rem;
+    }
+    .preview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      resize: vertical;
+      color: #333;
+    }
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    button {
+      flex: 1;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .copy-btn {
+      background: #667eea;
+      color: white;
+    }
+    .copy-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+    .copy-btn:active {
+      transform: translateY(0);
+    }
+    .copy-btn.copied {
+      background: #48bb78;
+    }
+    .clear-btn {
+      background: #e2e8f0;
+      color: #333;
+    }
+    .clear-btn:hover {
+      background: #cbd5e0;
+    }
+    .info {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f0f2ff;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🖼️ 画像 → Base64 変換</h1>
+
+  <div class="upload-area" id="uploadArea">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="upload-text">
+      📁 ここをタップして画像を選択<br>
+      <small>またはドラッグ&ドロップ</small>
+    </div>
+  </div>
+
+  <img id="preview" class="preview" alt="">
+
+  <textarea id="output" placeholder="ここに Base64 コードが表示されます..."></textarea>
+
+  <div class="button-group">
+    <button class="copy-btn" id="copyBtn" disabled>📋 コピー</button>
+    <button class="clear-btn" id="clearBtn">🗑️ クリア</button>
+  </div>
+
+  <div class="info">
+    ✅ <strong>使い方：</strong><br>
+    1. 画像をタップして選択<br>
+    2. Base64 コードが下に表示される<br>
+    3. 「コピー」ボタンで複製<br>
+    4. 生成されたコードを送る
+  </div>
+</div>
+
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const output = document.getElementById('output');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+
+uploadArea.addEventListener('click', () => fileInput.click());
+
+uploadArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+  uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  fileInput.files = e.dataTransfer.files;
+  convertImage();
+});
+
+fileInput.addEventListener('change', convertImage);
+
+function convertImage() {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    output.value = e.target.result;
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    copyBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+copyBtn.addEventListener('click', () => {
+  if (!output.value) return;
+  navigator.clipboard.writeText(output.value).then(() => {
+    copyBtn.textContent = '✅ コピーしました！';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = '📋 コピー';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  });
+});
+
+clearBtn.addEventListener('click', () => {
+  fileInput.value = '';
+  output.value = '';
+  preview.style.display = 'none';
+  copyBtn.disabled = true;
+});
+</script>
+
+</body>
+</html>
