@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rainy Milk</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div id="title-screen">
+    <div id="title-bg"></div>
+    <div id="title-content">
+      <h1 id="title-logo">Rainy Milk</h1>
+      <p id="title-sub">ミルキーフロッグと雨の午後</p>
+      <button id="start-btn" onclick="startGame()">は じ め る</button>
+    </div>
+  </div>
+
+  <div id="game-screen">
+    <div id="bg-layer"></div>
+    <div id="sprite-layer">
+      <img id="sprite-milka" class="sprite" src="" alt="">
+    </div>
+    <div id="cg-layer">
+      <img id="cg-img" src="" alt="">
+    </div>
+    <div id="fade-overlay"></div>
+    <div id="textbox">
+      <div id="name-plate"></div>
+      <div id="text-content"></div>
+      <div id="next-arrow">▼</div>
+    </div>
+    <div id="choices-container"></div>
+  </div>
+
+  <script src="js/script.js"></script>
+  <script src="js/engine.js"></script>
+</body>
+</html>
