@@ -50,6 +50,9 @@ const SCRIPT = [
   { cmd: 'sprite', expr: 'smile' },
   { cmd: 'text', name: 'ミルカ', text: 'うん。\nゆっくり休んでいいよ。' },
 
+  { cmd: 'narrate', text: '二人はミルカの自宅へ向かった。' },
+  { cmd: 'narrate', text: 'やさしい雨音に包まれながら……' },
+
   { cmd: 'fade_out', duration: 600 },
   { cmd: 'bg', src: 'bg_living.jpg' },
   { cmd: 'hide_sprite' },

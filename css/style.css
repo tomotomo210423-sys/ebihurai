@@ -277,18 +277,22 @@ body {
 
 #end-screen .replay-btn {
   margin-top: 1rem;
-  background: transparent;
-  border: 1px solid rgba(200, 170, 210, 0.5);
-  color: #c8a8e0;
-  padding: 0.7rem 2.5rem;
-  font-size: 0.9rem;
+  background: rgba(180, 130, 220, 0.25);
+  border: 1.5px solid #b882dc;
+  color: #f0d8ff;
+  padding: 0.8rem 2.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   font-family: inherit;
   letter-spacing: 0.3em;
   cursor: pointer;
   transition: all 0.25s;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
 }
 
 #end-screen .replay-btn:hover {
-  background: rgba(160, 110, 200, 0.2);
-  border-color: #c8a8e0;
+  background: rgba(180, 110, 220, 0.35);
+  border-color: #dfc8f0;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(180, 130, 220, 0.3);
 }
