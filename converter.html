@@ -180,6 +180,11 @@ fileInput.addEventListener('change', convertImage);
 function convertImage() {
   const file = fileInput.files[0];
   if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    alert('画像ファイルを選択してください');
+    fileInput.value = '';
+    return;
+  }
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -193,14 +198,26 @@ function convertImage() {
 
 copyBtn.addEventListener('click', () => {
   if (!output.value) return;
-  navigator.clipboard.writeText(output.value).then(() => {
+  const showCopied = () => {
     copyBtn.textContent = '✅ コピーしました！';
     copyBtn.classList.add('copied');
     setTimeout(() => {
       copyBtn.textContent = '📋 コピー';
       copyBtn.classList.remove('copied');
     }, 2000);
-  });
+  };
+  // 非HTTPS環境では navigator.clipboard が使えないためフォールバック
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(output.value).then(showCopied).catch(() => {
+      output.select();
+      document.execCommand('copy');
+      showCopied();
+    });
+  } else {
+    output.select();
+    document.execCommand('copy');
+    showCopied();
+  }
 });
 
 clearBtn.addEventListener('click', () => {

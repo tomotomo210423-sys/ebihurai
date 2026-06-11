@@ -7,6 +7,8 @@ const engine = {
   typingTimer: null,
   spriteCache: {},
   useBlendMode: false,
+  spriteSeq: 0,
+  cgHideTimer: null,
 
   init() {
     SCRIPT.forEach((cmd, i) => {
@@ -19,7 +21,12 @@ const engine = {
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.code === 'Enter') this.handleClick();
+      // フォーカス中のボタン（選択肢など）はclickイベント側で処理されるため二重発火を防ぐ
+      if (e.target instanceof HTMLButtonElement) return;
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        this.handleClick();
+      }
     });
 
     this.next();
@@ -147,8 +154,11 @@ const engine = {
   setSprite(expr) {
     const src = `images/sprites/milka_${expr}.png`;
     const el = document.getElementById('sprite-milka');
+    const seq = ++this.spriteSeq;
 
     this.processSprite(src).then((processed) => {
+      // 処理中に別の表情指定やhide_spriteが来ていたら古い結果を破棄
+      if (seq !== this.spriteSeq) return;
       if (!processed) return;
       el.style.opacity = '0';
       if (this.useBlendMode) el.style.mixBlendMode = 'multiply';
@@ -161,6 +171,7 @@ const engine = {
   },
 
   hideSprite() {
+    this.spriteSeq++; // 処理中のsetSpriteが後から再表示しないよう無効化
     const el = document.getElementById('sprite-milka');
     el.style.opacity = '0';
   },
@@ -170,6 +181,10 @@ const engine = {
   showCG(src) {
     const layer = document.getElementById('cg-layer');
     const img = document.getElementById('cg-img');
+    // hideCG直後のタイマーが新しいCGを消してしまうのを防ぐ
+    clearTimeout(this.cgHideTimer);
+    this.cgHideTimer = null;
+    img.onerror = () => { layer.style.display = 'none'; }; // 画像欠落時に壊れた表示を残さない
     img.src = `images/cg/${src}`;
     layer.style.opacity = '0';
     layer.style.display = 'flex';
@@ -182,7 +197,8 @@ const engine = {
   hideCG() {
     const layer = document.getElementById('cg-layer');
     layer.style.opacity = '0';
-    setTimeout(() => { layer.style.display = 'none'; }, 600);
+    clearTimeout(this.cgHideTimer);
+    this.cgHideTimer = setTimeout(() => { layer.style.display = 'none'; }, 600);
   },
 
   // ── Text / Typewriter ─────────────────────────────────────
@@ -193,15 +209,19 @@ const engine = {
     content.textContent = '';
     document.getElementById('next-arrow').classList.remove('visible');
 
-    this.fullText = text;
+    this.fullText = text || '';
     this.isTyping = true;
+    // サロゲートペア（絵文字等）を壊さないようコードポイント単位で分割
+    const chars = [...this.fullText];
     let i = 0;
 
     clearInterval(this.typingTimer);
     this.typingTimer = setInterval(() => {
-      content.textContent += this.fullText[i];
-      i++;
-      if (i >= this.fullText.length) {
+      if (i < chars.length) {
+        content.textContent += chars[i];
+        i++;
+      }
+      if (i >= chars.length) {
         clearInterval(this.typingTimer);
         this.isTyping = false;
         this.waitingForClick = true;
@@ -241,6 +261,10 @@ const engine = {
   jumpTo(label) {
     if (this.labels[label] !== undefined) {
       this.index = this.labels[label];
+      this.next();
+    } else {
+      // 不明なラベルで無言のままゲームが停止するのを防ぐ
+      console.warn(`未定義のラベルへのジャンプ: ${label}`);
       this.next();
     }
   },
@@ -316,7 +340,11 @@ function removeWhitePixels(data, width, height) {
 
 // ── Title → Game transition ───────────────────────────────
 
+let gameStarted = false;
+
 function startGame() {
+  if (gameStarted) return; // 連打によるengine.init()の二重実行を防ぐ
+  gameStarted = true;
   const title = document.getElementById('title-screen');
   title.style.opacity = '0';
   setTimeout(() => {

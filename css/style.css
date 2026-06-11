@@ -199,11 +199,13 @@ body {
   color: #c8a8e0;
   font-size: 0.75rem;
   opacity: 0;
-  animation: blink 1.3s infinite ease-in-out;
 }
 
+/* アニメーションが opacity:0 を上書きして非表示時も点滅していたため、
+   .visible のときだけ点滅させる */
 #next-arrow.visible {
   opacity: 1;
+  animation: blink 1.3s infinite ease-in-out;
 }
 
 @keyframes blink {

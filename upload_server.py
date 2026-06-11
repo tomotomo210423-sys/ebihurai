@@ -1,13 +1,42 @@
 #!/usr/bin/env python3
 import http.server
 import socketserver
-import urllib.parse
 import json
 import base64
 import os
-from pathlib import Path
 
 PORT = 8000
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAX_UPLOAD = 20 * 1024 * 1024  # 20MB
+
+# アップロード先のホワイトリスト（パストラバーサル対策）
+# 背景は images/bg/、CGは images/cg/ に正しく保存する
+ALLOWED_DESTS = {
+    'normal':    'images/sprites/milka_normal.png',
+    'angry':     'images/sprites/milka_angry.png',
+    'sad':       'images/sprites/milka_sad.png',
+    'surprised': 'images/sprites/milka_surprised.png',
+    'blush':     'images/sprites/milka_blush.png',
+    'smile':     'images/sprites/milka_smile.png',
+    'sleepy':    'images/sprites/milka_sleepy.png',
+    'bg_cafe':   'images/bg/bg_cafe.jpg',
+    'bg_living': 'images/bg/bg_living.jpg',
+    'milka_lap': 'images/cg/milka_lap.png',
+}
+
+IMAGE_SIGNATURES = (
+    b'\x89PNG\r\n\x1a\n',  # PNG
+    b'\xff\xd8\xff',        # JPEG
+    b'GIF87a', b'GIF89a',   # GIF
+)
+
+
+def is_image_data(data):
+    if data.startswith(IMAGE_SIGNATURES):
+        return True
+    # WebP: RIFF....WEBP
+    return len(data) >= 12 and data[:4] == b'RIFF' and data[8:12] == b'WEBP'
+
 
 class UploadHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -19,47 +48,88 @@ class UploadHandler(http.server.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+    def send_json(self, status, payload):
+        body = json.dumps(payload).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
+        try:
+            content_length = int(self.headers.get('Content-Length') or 0)
+        except ValueError:
+            self.send_json(400, {'error': 'Invalid Content-Length'})
+            return
+        if content_length <= 0:
+            self.send_json(411, {'error': 'Content-Length required'})
+            return
+        if content_length > MAX_UPLOAD:
+            self.send_json(413, {'error': 'ファイルが大きすぎます（最大20MB）'})
+            return
         body = self.rfile.read(content_length)
 
         try:
             data = json.loads(body.decode('utf-8'))
-            base64_data = data.get('image')
-            expr = data.get('expr', 'unknown')
+        except (ValueError, UnicodeDecodeError):
+            self.send_json(400, {'error': '不正なJSONです'})
+            return
+        if not isinstance(data, dict):
+            self.send_json(400, {'error': '不正なJSONです'})
+            return
 
-            if not base64_data:
-                self.send_response(400)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'error': 'No image data'}).encode())
+        try:
+            base64_data = data.get('image')
+            expr = data.get('expr')
+
+            if not base64_data or not isinstance(base64_data, str):
+                self.send_json(400, {'error': 'No image data'})
                 return
 
-            # Save to file
-            filename = f"/home/user/ebihurai/images/sprites/milka_{expr}.png"
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            # ホワイトリスト照合（クライアント入力をパスに使わない）
+            rel_path = ALLOWED_DESTS.get(expr) if isinstance(expr, str) else None
+            if not rel_path:
+                self.send_json(400, {'error': '不明な保存先です。表情/背景/CGを選択してください'})
+                return
 
             # Remove data URI prefix if present
             if base64_data.startswith('data:'):
-                base64_data = base64_data.split(',', 1)[1]
+                parts = base64_data.split(',', 1)
+                if len(parts) != 2:
+                    self.send_json(400, {'error': '不正な画像データです'})
+                    return
+                base64_data = parts[1]
 
-            image_data = base64.b64decode(base64_data)
-            with open(filename, 'wb') as f:
+            try:
+                image_data = base64.b64decode(base64_data, validate=True)
+            except (ValueError, TypeError):
+                self.send_json(400, {'error': '不正な画像データです'})
+                return
+
+            # 画像のマジックバイト検証（HTML/SVG等のアップロードを拒否）
+            if not is_image_data(image_data):
+                self.send_json(400, {'error': '画像ファイル（PNG/JPEG/GIF/WebP）のみアップロードできます'})
+                return
+
+            filename = os.path.join(BASE_DIR, rel_path)
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+            # 一時ファイル経由で書き込み、途中失敗で壊れたファイルを残さない
+            tmp_path = filename + '.tmp'
+            with open(tmp_path, 'wb') as f:
                 f.write(image_data)
+            os.replace(tmp_path, filename)
 
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({
+            self.send_json(200, {
                 'success': True,
-                'message': f'milka_{expr}.png として保存されました！',
-                'file': filename
-            }).encode())
+                'message': f'{os.path.basename(rel_path)} として保存されました！',
+                'file': rel_path
+            })
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': str(e)}).encode())
+            # 詳細はサーバー側ログのみに残す（クライアントへの情報漏えい防止）
+            print(f"アップロードエラー: {e!r}")
+            self.send_json(500, {'error': 'サーバー内部エラーが発生しました'})
 
     def get_html(self):
         return '''<!DOCTYPE html>
@@ -289,6 +359,11 @@ exprSelect.addEventListener('change', () => {
 function updatePreview() {
   const file = fileInput.files[0];
   if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showStatus('画像ファイルを選択してください', 'error');
+    fileInput.value = '';
+    return;
+  }
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -354,9 +429,16 @@ function showStatus(msg, type) {
 </html>'''
 
 if __name__ == '__main__':
-    with socketserver.TCPServer(("", PORT), UploadHandler) as httpd:
+    os.chdir(BASE_DIR)  # ゲームファイルの配信ルートをスクリプトの場所に固定
+
+    class Server(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True  # 再起動時の "Address already in use" を防ぐ
+        daemon_threads = True
+
+    # 注意: スマホからのアクセス用に全インターフェースで待ち受ける（ローカル開発専用）
+    with Server(("", PORT), UploadHandler) as httpd:
         print(f"🚀 サーバー起動: http://localhost:{PORT}")
-        print("スマホから http://[PCのIP]:{PORT} でアクセスしてください")
+        print(f"スマホから http://[PCのIP]:{PORT} でアクセスしてください")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
