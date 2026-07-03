@@ -7,26 +7,40 @@ const engine = {
   typingTimer: null,
   spriteCache: {},
   useBlendMode: false,
-  spriteSeq: 0,
-  cgHideTimer: null,
+  
+  // ── セーブ・ロード機能 ──
+  saves: [],
+  currentSave: null,
+  
+  // ── バックログ機能 ──
+  backlog: [],
+  
+  // ── 設定 ──
+  settings: {
+    textSpeed: 38,
+    volume: 1.0,
+    autoPlay: false,
+    skipRead: false
+  },
 
   init() {
     SCRIPT.forEach((cmd, i) => {
       if (cmd.cmd === 'label') this.labels[cmd.name] = i;
     });
 
+    // セーブデータを読み込む
+    this.loadSettings();
+
     document.getElementById('game-screen').addEventListener('click', (e) => {
       if (e.target.classList.contains('choice-btn')) return;
+      if (e.target.classList.contains('menu-btn')) return;
       this.handleClick();
     });
 
     document.addEventListener('keydown', (e) => {
-      // フォーカス中のボタン（選択肢など）はclickイベント側で処理されるため二重発火を防ぐ
-      if (e.target instanceof HTMLButtonElement) return;
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        this.handleClick();
-      }
+      if (e.code === 'Space' || e.code === 'Enter') this.handleClick();
+      if (e.code === 'KeyS') this.toggleMenu();
+      if (e.code === 'KeyL') this.showLoadScreen();
     });
 
     this.next();
@@ -154,11 +168,8 @@ const engine = {
   setSprite(expr) {
     const src = `images/sprites/milka_${expr}.png`;
     const el = document.getElementById('sprite-milka');
-    const seq = ++this.spriteSeq;
 
     this.processSprite(src).then((processed) => {
-      // 処理中に別の表情指定やhide_spriteが来ていたら古い結果を破棄
-      if (seq !== this.spriteSeq) return;
       if (!processed) return;
       el.style.opacity = '0';
       if (this.useBlendMode) el.style.mixBlendMode = 'multiply';
@@ -171,7 +182,6 @@ const engine = {
   },
 
   hideSprite() {
-    this.spriteSeq++; // 処理中のsetSpriteが後から再表示しないよう無効化
     const el = document.getElementById('sprite-milka');
     el.style.opacity = '0';
   },
@@ -181,10 +191,6 @@ const engine = {
   showCG(src) {
     const layer = document.getElementById('cg-layer');
     const img = document.getElementById('cg-img');
-    // hideCG直後のタイマーが新しいCGを消してしまうのを防ぐ
-    clearTimeout(this.cgHideTimer);
-    this.cgHideTimer = null;
-    img.onerror = () => { layer.style.display = 'none'; }; // 画像欠落時に壊れた表示を残さない
     img.src = `images/cg/${src}`;
     layer.style.opacity = '0';
     layer.style.display = 'flex';
@@ -197,8 +203,7 @@ const engine = {
   hideCG() {
     const layer = document.getElementById('cg-layer');
     layer.style.opacity = '0';
-    clearTimeout(this.cgHideTimer);
-    this.cgHideTimer = setTimeout(() => { layer.style.display = 'none'; }, 600);
+    setTimeout(() => { layer.style.display = 'none'; }, 600);
   },
 
   // ── Text / Typewriter ─────────────────────────────────────
@@ -209,25 +214,24 @@ const engine = {
     content.textContent = '';
     document.getElementById('next-arrow').classList.remove('visible');
 
-    this.fullText = text || '';
+    // バックログに追加
+    this.backlog.push({ name, text });
+
+    this.fullText = text;
     this.isTyping = true;
-    // サロゲートペア（絵文字等）を壊さないようコードポイント単位で分割
-    const chars = [...this.fullText];
     let i = 0;
 
     clearInterval(this.typingTimer);
     this.typingTimer = setInterval(() => {
-      if (i < chars.length) {
-        content.textContent += chars[i];
-        i++;
-      }
-      if (i >= chars.length) {
+      content.textContent += this.fullText[i];
+      i++;
+      if (i >= this.fullText.length) {
         clearInterval(this.typingTimer);
         this.isTyping = false;
         this.waitingForClick = true;
         document.getElementById('next-arrow').classList.add('visible');
       }
-    }, 38);
+    }, this.settings.textSpeed);
   },
 
   skipTyping() {
@@ -262,10 +266,6 @@ const engine = {
     if (this.labels[label] !== undefined) {
       this.index = this.labels[label];
       this.next();
-    } else {
-      // 不明なラベルで無言のままゲームが停止するのを防ぐ
-      console.warn(`未定義のラベルへのジャンプ: ${label}`);
-      this.next();
     }
   },
 
@@ -278,6 +278,171 @@ const engine = {
     setTimeout(() => { if (callback) callback(); }, duration);
   },
 
+  // ── セーブ・ロード ───────────────────────────────────────
+
+  saveGame(slot) {
+    const save = {
+      index: this.index,
+      timestamp: new Date().toLocaleString('ja-JP'),
+      backlog: [...this.backlog]
+    };
+    this.saves[slot] = save;
+    localStorage.setItem(`rainy_milk_save_${slot}`, JSON.stringify(save));
+  },
+
+  loadGame(slot) {
+    const saveData = localStorage.getItem(`rainy_milk_save_${slot}`);
+    if (saveData) {
+      const save = JSON.parse(saveData);
+      this.index = save.index;
+      this.backlog = save.backlog;
+      this.next();
+      this.hideMenu();
+    }
+  },
+
+  // ── 設定 ──────────────────────────────────────────────────
+
+  loadSettings() {
+    const saved = localStorage.getItem('rainy_milk_settings');
+    if (saved) {
+      this.settings = JSON.parse(saved);
+    }
+  },
+
+  saveSettings() {
+    localStorage.setItem('rainy_milk_settings', JSON.stringify(this.settings));
+  },
+
+  toggleMenu() {
+    const menu = document.getElementById('game-menu');
+    if (menu && menu.style.display !== 'none') {
+      this.hideMenu();
+    } else {
+      this.showMenu();
+    }
+  },
+
+  showMenu() {
+    let menu = document.getElementById('game-menu');
+    if (!menu) {
+      menu = document.createElement('div');
+      menu.id = 'game-menu';
+      menu.className = 'game-menu';
+      menu.innerHTML = `
+        <div class="menu-content">
+          <h2>メニュー</h2>
+          <div class="menu-section">
+            <label>テキスト速度: <span id="speed-value">${this.settings.textSpeed}</span>ms</label>
+            <input type="range" id="text-speed" min="10" max="100" value="${this.settings.textSpeed}">
+          </div>
+          <div class="menu-section">
+            <label>音量: <span id="volume-value">${Math.round(this.settings.volume * 100)}</span>%</label>
+            <input type="range" id="volume" min="0" max="100" value="${this.settings.volume * 100}">
+          </div>
+          <div class="menu-buttons">
+            <button class="menu-btn" onclick="engine.showSaveScreen()">セーブ</button>
+            <button class="menu-btn" onclick="engine.showLoadScreen()">ロード</button>
+            <button class="menu-btn" onclick="engine.showBacklog()">バックログ</button>
+            <button class="menu-btn" onclick="engine.hideMenu()">閉じる</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('game-screen').appendChild(menu);
+
+      document.getElementById('text-speed').addEventListener('change', (e) => {
+        this.settings.textSpeed = parseInt(e.target.value);
+        document.getElementById('speed-value').textContent = this.settings.textSpeed;
+        this.saveSettings();
+      });
+
+      document.getElementById('volume').addEventListener('change', (e) => {
+        this.settings.volume = parseInt(e.target.value) / 100;
+        document.getElementById('volume-value').textContent = parseInt(e.target.value);
+        this.saveSettings();
+      });
+    }
+    menu.style.display = 'flex';
+  },
+
+  hideMenu() {
+    const menu = document.getElementById('game-menu');
+    if (menu) menu.style.display = 'none';
+  },
+
+  showSaveScreen() {
+    let screen = document.getElementById('save-screen');
+    if (!screen) {
+      screen = document.createElement('div');
+      screen.id = 'save-screen';
+      screen.className = 'modal-screen';
+      let html = '<div class="modal-content"><h2>セーブ</h2><div class="save-slots">';
+      for (let i = 0; i < 5; i++) {
+        const save = this.saves[i];
+        const saveInfo = save ? `<small>${save.timestamp}</small>` : '<small>空のスロット</small>';
+        html += `<button class="save-slot" onclick="engine.saveGame(${i}); engine.hideSaveScreen();">スロット ${i + 1}<br>${saveInfo}</button>`;
+      }
+      html += '</div><button class="menu-btn" onclick="engine.hideSaveScreen()">キャンセル</button></div>';
+      screen.innerHTML = html;
+      document.getElementById('game-screen').appendChild(screen);
+    }
+    screen.style.display = 'flex';
+  },
+
+  hideSaveScreen() {
+    const screen = document.getElementById('save-screen');
+    if (screen) screen.style.display = 'none';
+  },
+
+  showLoadScreen() {
+    let screen = document.getElementById('load-screen');
+    if (!screen) {
+      screen = document.createElement('div');
+      screen.id = 'load-screen';
+      screen.className = 'modal-screen';
+      let html = '<div class="modal-content"><h2>ロード</h2><div class="save-slots">';
+      for (let i = 0; i < 5; i++) {
+        const save = this.saves[i];
+        if (save) {
+          html += `<button class="save-slot" onclick="engine.loadGame(${i});">スロット ${i + 1}<br><small>${save.timestamp}</small></button>`;
+        }
+      }
+      html += '</div><button class="menu-btn" onclick="engine.hideLoadScreen()">キャンセル</button></div>';
+      screen.innerHTML = html;
+      document.getElementById('game-screen').appendChild(screen);
+    }
+    screen.style.display = 'flex';
+  },
+
+  hideLoadScreen() {
+    const screen = document.getElementById('load-screen');
+    if (screen) screen.style.display = 'none';
+  },
+
+  showBacklog() {
+    let screen = document.getElementById('backlog-screen');
+    if (!screen) {
+      screen = document.createElement('div');
+      screen.id = 'backlog-screen';
+      screen.className = 'modal-screen';
+      let html = '<div class="modal-content"><h2>バックログ</h2><div class="backlog-content">';
+      for (let i = Math.max(0, this.backlog.length - 20); i < this.backlog.length; i++) {
+        const entry = this.backlog[i];
+        const name = entry.name ? `<strong>${entry.name}:</strong> ` : '';
+        html += `<p>${name}${entry.text}</p>`;
+      }
+      html += '</div><button class="menu-btn" onclick="engine.hideBacklog()">閉じる</button></div>';
+      screen.innerHTML = html;
+      document.getElementById('game-screen').appendChild(screen);
+    }
+    screen.style.display = 'flex';
+  },
+
+  hideBacklog() {
+    const screen = document.getElementById('backlog-screen');
+    if (screen) screen.style.display = 'none';
+  },
+
   // ── End ──────────────────────────────────────────────────
 
   showEnd() {
@@ -287,7 +452,7 @@ const engine = {
       endEl.id = 'end-screen';
       endEl.innerHTML = `
         <p class="end-title">― To Be Continued ―</p>
-        <p class="end-credit">雨宮ミルカ　デモ版</p>
+        <p class="end-credit">雨宮ミルカ　製品版 v1.0</p>
         <button class="replay-btn" onclick="location.reload()">もう一度</button>
       `;
       gameScreen.appendChild(endEl);
@@ -340,11 +505,7 @@ function removeWhitePixels(data, width, height) {
 
 // ── Title → Game transition ───────────────────────────────
 
-let gameStarted = false;
-
 function startGame() {
-  if (gameStarted) return; // 連打によるengine.init()の二重実行を防ぐ
-  gameStarted = true;
   const title = document.getElementById('title-screen');
   title.style.opacity = '0';
   setTimeout(() => {

@@ -1,7 +1,7 @@
 const SCRIPT = [
 
   // ── オープニング ──────────────────────────────────────────
-  { cmd: 'bg', src: 'bg_cafe.jpg' },
+  { cmd: 'bg', src: 'bg_street_rain.png' },
   { cmd: 'fade_in', duration: 1200 },
 
   { cmd: 'narrate', text: '雨の音が、窓を叩いている。' },
@@ -10,6 +10,7 @@ const SCRIPT = [
 
   // ── 入店・ミルカ登場 ──────────────────────────────────────
   { cmd: 'fade_out', duration: 400 },
+  { cmd: 'bg', src: 'bg_cafe.jpg' },
   { cmd: 'sprite', expr: 'normal' },
   { cmd: 'fade_in', duration: 700 },
 
@@ -41,7 +42,8 @@ const SCRIPT = [
 
   { cmd: 'choice', options: [
     { text: '……少し、休んでいいですか。', jump: 'route_a' },
-    { text: '大丈夫です、もう行きます。',  jump: 'route_b' },
+    { text: 'ミルカさんのことを、もっと知りたい。',  jump: 'route_b' },
+    { text: '大丈夫です、もう行きます。',  jump: 'route_c' },
   ]},
 
   // ── ルートA：ひざまくら ───────────────────────────────────
@@ -67,18 +69,81 @@ const SCRIPT = [
 
   { cmd: 'narrate', text: '雨音と、やわらかい指の感触。\nゆっくりと、意識が溶けていく。' },
 
+  { cmd: 'narrate', text: '目覚めたとき、外の雨は止んでいた。\nでも、ここにいたいという気持ちは\n何も変わっていなかった。' },
+
+  { cmd: 'fade_out', duration: 600 },
+  { cmd: 'hide_cg' },
+  { cmd: 'sprite', expr: 'smile' },
+  { cmd: 'fade_in', duration: 600 },
+
+  { cmd: 'text', name: 'ミルカ', text: '目覚めた？\nお水、飲む？' },
+  { cmd: 'text', name: 'ミルカ', text: 'ここは……いつでも君の場所だよ。' },
+
+  { cmd: 'narrate', text: 'その言葉が、全てだった。' },
+
   { cmd: 'end' },
 
-  // ── ルートB：別れ ────────────────────────────────────────
+  // ── ルートB：ミルカを知る ────────────────────────────────
   { cmd: 'label', name: 'route_b' },
+
+  { cmd: 'sprite', expr: 'blush' },
+  { cmd: 'text', name: 'ミルカ', text: 'あ、私のこと？\nふふ、何か聞きたいことあるのかな。' },
+
+  { cmd: 'sprite', expr: 'normal' },
+  { cmd: 'text', name: 'ミルカ', text: 'そっか。\nじゃあ、このカフェで話そうか。' },
+
+  { cmd: 'narrate', text: 'ミルカは席に座り、窓の外の雨を眺めた。' },
+
+  { cmd: 'sprite', expr: 'sleepy' },
+  { cmd: 'text', name: 'ミルカ', text: '私ね、昔はもっと……\nぎゅっと何かを握りしめてた。' },
+  { cmd: 'text', name: 'ミルカ', text: 'でも、ある日気づいたんだよ。\n握りしめるより、\n手を広げることの方が大切だって。' },
+
+  { cmd: 'sprite', expr: 'smile' },
+  { cmd: 'text', name: 'ミルカ', text: 'だからね、このカフェを作ったの。\n誰もが、ここで少し休める場所。\nそういう場所が、あってもいいと思ったから。' },
+
+  { cmd: 'narrate', text: 'その瞬間、ミルカの姿が違って見えた。\n単なる店員ではなく、\n何か大切なものを守ろうとしている人。' },
+
+  { cmd: 'sprite', expr: 'blush' },
+  { cmd: 'text', name: 'ミルカ', text: 'あ、でも……\n君の話も聞きたいな。\nどうして、そんなに疲れてるの？' },
+
+  { cmd: 'choice', options: [
+    { text: 'ミルカさんと話していたら、少し楽になった。', jump: 'route_b_end_a' },
+    { cmd: 'text', name: 'ミルカ', text: 'ふふっ、そっか。\nなら、また明日も来てね。' },
+    { text: 'ここで、もう少し一緒にいたい。', jump: 'route_b_end_b' },
+  ]},
+
+  { cmd: 'label', name: 'route_b_end_a' },
+  { cmd: 'sprite', expr: 'smile' },
+  { cmd: 'text', name: 'ミルカ', text: 'ふふっ。\nそれなら、また明日も来てね。' },
+  { cmd: 'text', name: 'ミルカ', text: 'ここは、いつでも君を待ってるから。' },
+  { cmd: 'narrate', text: 'カフェを出るとき、心は少し軽くなっていた。\nミルカの言葉が、心に残っていた。' },
+  { cmd: 'end' },
+
+  { cmd: 'label', name: 'route_b_end_b' },
+  { cmd: 'sprite', expr: 'blush' },
+  { cmd: 'text', name: 'ミルカ', text: 'ふふ……いいよ。\nいつまででも。' },
+  { cmd: 'fade_out', duration: 600 },
+  { cmd: 'cg', src: 'milka_cooking.png' },
+  { cmd: 'fade_in', duration: 800 },
+  { cmd: 'narrate', text: 'ミルカが、キッチンで何かを作り始めた。\n雨の音と、調理の音が、心地よく重なる。' },
+  { cmd: 'text', name: 'ミルカ', text: 'ホットミルク、作ろうか。\n君の好きな、甘さで。' },
+  { cmd: 'narrate', text: 'その時、初めて気づいた。\nこの人は、相手を知ろうとしている。\n本当に、心から。' },
+  { cmd: 'end' },
+
+  // ── ルートC：別れ ────────────────────────────────────────
+  { cmd: 'label', name: 'route_c' },
 
   { cmd: 'sprite', expr: 'normal' },
   { cmd: 'text', name: 'ミルカ', text: 'そっか……。\nまた来てね。' },
 
   { cmd: 'sprite', expr: 'smile' },
-  { cmd: 'text', name: 'ミルカ', text: 'ふふっ、大丈夫だよぉ。' },
+  { cmd: 'text', name: 'ミルカ', text: 'ふふっ、大丈夫だよぉ。\nいつでも、ここにいるから。' },
 
   { cmd: 'narrate', text: 'カフェを出ると、まだ雨が降っていた。\nでも——なぜか、少し軽くなった気がした。' },
+
+  { cmd: 'narrate', text: 'ミルカの言葉が、心に残っていた。\n「また来てね」と。' },
+
+  { cmd: 'narrate', text: 'その約束が、明日への理由になった。' },
 
   { cmd: 'end' },
 ];
